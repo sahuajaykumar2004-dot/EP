@@ -21,6 +21,7 @@ class CollegeProfileView(generics.RetrieveUpdateAPIView):
 
     serializer_class = CollegeProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self):
         """Return the logged-in college user's profile."""
@@ -290,31 +291,46 @@ class HostelListCreateView(generics.ListCreateAPIView):
         return Hostel.objects.none()  # no random list
 
 class HostelDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Hostel.objects.all()
+    queryset = Hostel.objects.all().order_by("id")
     serializer_class = HostelSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
 class HostelImageUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        # Check for image
+        # 🔹 Check image
         if "image" not in request.FILES:
             return Response({"error": "No image provided"}, status=400)
 
         image = request.FILES["image"]
 
-        # Get college ID from request data
+        # 🔹 College ID
         college_id = request.data.get("college")
         if not college_id:
             return Response({"error": "College ID not provided"}, status=400)
 
+        # 🔹 Check college exists
         try:
             college = CollegeProfile.objects.get(id=college_id)
         except CollegeProfile.DoesNotExist:
             return Response({"error": "College not found"}, status=404)
 
-        # Save image under /media/hostels/<college-id>/
-        path = default_storage.save(f"hostels/{college.id}/{image.name}", image)
+        # 🔹 Check user owns college
+        if request.user != college.user:
+            return Response({"error": "Permission denied"}, status=403)
+
+        # 🔹 Generate safe filename
+        import uuid
+        extension = image.name.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{extension}"
+
+        # 🔹 Save file
+        path = default_storage.save(f"hostels/{college.id}/{filename}", image)
         image_url = default_storage.url(path)
 
-        return Response({"image_url": image_url}, status=201)
+        # 🔹 Make full URL
+        full_url = request.build_absolute_uri(image_url)
+
+        return Response({"image_url": full_url}, status=201)
