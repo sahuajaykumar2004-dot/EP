@@ -414,3 +414,61 @@ class HostelImageUploadView(APIView):
         full_url = request.build_absolute_uri(image_url)
 
         return Response({"image_url": full_url}, status=201)
+
+class FilterOptionsAPIView(APIView):
+    """
+    Returns all dropdown options OR specific filter options dynamically.
+    """
+
+    def get_filter_data(self):
+        """Collect all filter values in one place to reuse."""
+        countries = CollegeProfile.objects.values_list("country", flat=True).distinct()
+        states = CollegeProfile.objects.values_list("state", flat=True).distinct()
+        districts = CollegeProfile.objects.values_list("district", flat=True).distinct()
+
+        accreditation = (
+            CollegeProfile.objects
+            .exclude(accreditation_body__isnull=True)
+            .exclude(accreditation_body__exact="")
+            .values_list("accreditation_body", flat=True)
+            .distinct()
+        )
+
+        course_levels = [c[0] for c in Course.COURSE_LEVEL_CHOICES]
+        main_streams = [c[0] for c in Course.MAIN_STREAM_CHOICES]
+        degrees = [c[0] for c in Course.DEGREE_CHOICES]
+
+        specializations = (
+            Course.objects
+            .exclude(specialization__isnull=True)
+            .exclude(specialization__exact="")
+            .values_list("specialization", flat=True)
+            .distinct()
+        )
+
+        return {
+            "countries": list(countries),
+            "states": list(states),
+            "districts": list(districts),
+            "accreditation_bodies": list(accreditation),
+            "course_levels": course_levels,
+            "main_streams": main_streams,
+            "degrees": degrees,
+            "specializations": list(specializations),
+        }
+
+    def get(self, request, filter_name=None):
+        all_filters = self.get_filter_data()
+
+        # If /filters/ → return all
+        if filter_name is None:
+            return Response(all_filters)
+
+        # If /filters/<filter_name>/ → return only that filter
+        if filter_name not in all_filters:
+            return Response(
+                {"error": f"'{filter_name}' is not a valid filter"},
+                status=400
+            )
+
+        return Response({filter_name: all_filters[filter_name]})
