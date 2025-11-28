@@ -1,155 +1,210 @@
-# from django.contrib import admin
-# from django.utils.html import format_html
-# from django.urls import reverse
-# from .models import CollegeProfile, Course, CollegeGallery, AdmissionApplication, CourseCategory
+from django.contrib import admin
+from django.utils.html import format_html
+
+from .models import (
+    CollegeProfile, Course, Event, Gallery,
+    Faculty, Hostel
+)
 
 
-# # ---------- Inline for Gallery ----------
-# class CollegeGalleryInline(admin.TabularInline):
-#     model = CollegeGallery
-#     extra = 1
-#     max_num = 12
-#     readonly_fields = ['uploaded_at']
+# ============================================
+# 🔵 INLINE MODELS
+# ============================================
+
+class CourseInline(admin.TabularInline):
+    model = Course
+    extra = 1
 
 
-# # ---------- Inline for Courses ----------
-# class CourseInline(admin.TabularInline):
-#     model = Course
-#     extra = 1
-#     fields = (
-#         'name', 'category', 'duration', 'affiliation_details', 'eligibility',
-#         'fees_structure', 'consultancy_incentive', 'total_seats',
-#         'admission_completed', 'is_active', 'is_popular'
-#     )
-#     readonly_fields = ('available_seats',)
+class FacultyInline(admin.TabularInline):
+    model = Faculty
+    extra = 1
 
 
-# # ---------- College Profile ----------
-# @admin.register(CollegeProfile)
-# class CollegeProfileAdmin(admin.ModelAdmin):
-#     list_display = (
-#         'college_name', 'college_code', 'state', 'district',
-#         'verified_badge', 'category_list', 'course_count',
-#         'total_seats', 'available_seats', 'view_site'
-#     )
-#     # 'categories' is the ManyToManyField on CollegeProfile (was incorrectly referenced as 'college_category')
-#     list_filter = ('verified', 'state', 'district', 'categories')
-#     search_fields = ('college_name', 'college_code', 'state', 'district')
-#     readonly_fields = ('college_code', 'verified')
-#     inlines = [CourseInline, CollegeGalleryInline]
-#     actions = ['approve_college']
-
-#     fieldsets = (
-#         ('Basic Info', {
-#             'fields': (
-#                 'user', 'college_name', 'college_code', 'registration_number',
-#                 'address', 'country', 'state', 'district', 'college_category'
-#             )
-#         }),
-#         ('Contact', {
-#             'fields': ('website', 'email', 'phone', 'landline', 'contact_person')
-#         }),
-#         ('Visuals & Branding', {
-#             'fields': ('college_logo', 'college_image', 'credential_image', 'about_college')
-#         }),
-#         ('Verification', {'fields': ('verified',)})
-#     )
-
-#     def get_queryset(self, request):
-#         return super().get_queryset(request).prefetch_related('courses')
-
-#     def verified_badge(self, obj):
-#         if obj.verified:
-#             return format_html('<span style="color:green;">✔️ Verified</span>')
-#         return format_html('<span style="color:gray;">❌ Not Verified</span>')
-#     verified_badge.short_description = "Status"
-
-#     def category_list(self, obj):
-#         return obj.get_college_category_display()
-#     category_list.short_description = "Category"
-
-#     def course_count(self, obj):
-#         return obj.courses.count()
-#     course_count.short_description = "Courses"
-
-#     def total_seats(self, obj):
-#         return sum(c.total_seats for c in obj.courses.all())
-#     total_seats.short_description = "Total Seats"
-
-#     def available_seats(self, obj):
-#         return sum(c.available_seats for c in obj.courses.all())
-#     available_seats.short_description = "Available Seats"
-
-#     def view_site(self, obj):
-#         url = reverse('college-detail', args=[obj.pk])
-#         return format_html('<a href="{}" target="_blank">🔗 View Site</a>', url)
-#     view_site.short_description = "View"
-
-#     @admin.action(description="✅ Approve selected colleges")
-#     def approve_college(self, request, queryset):
-#         updated = queryset.update(verified=True)
-#         self.message_user(request, f"{updated} colleges approved successfully.")
+class GalleryInline(admin.TabularInline):
+    model = Gallery
+    extra = 1
 
 
-# # ---------- Course ----------
-# @admin.register(Course)
-# class CourseAdmin(admin.ModelAdmin):
-#     list_display = (
-#         'name', 'college', 'category', 'duration',
-#         'total_seats', 'admission_completed', 'available_seats',
-#         'is_popular', 'is_active'
-#     )
-#     # 'level' belongs to CourseCategory; filter courses by the related category's level
-#     list_filter = ('is_active', 'is_popular', 'category', 'category__level', 'college__state', 'college__district')
-#     search_fields = ('name', 'college__college_name')
-#     readonly_fields = ('available_seats',)
-
-#     def get_queryset(self, request):
-#         return super().get_queryset(request).select_related('college', 'category')
+class HostelInline(admin.TabularInline):
+    model = Hostel
+    extra = 1
 
 
-# # ---------- Gallery ----------
-# @admin.register(CollegeGallery)
-# class CollegeGalleryAdmin(admin.ModelAdmin):
-#     list_display = ('college', 'image_preview', 'uploaded_at')
-#     readonly_fields = ('uploaded_at',)
+# ============================================
+# 🔵 COLLEGE PROFILE ADMIN
+# ============================================
 
-#     def image_preview(self, obj):
-#         if obj.image:
-#             return format_html('<img src="{}" width="100" height="60" style="object-fit:cover;border-radius:5px;">', obj.image.url)
-#         return "-"
-#     image_preview.short_description = "Preview"
+@admin.register(CollegeProfile)
+class CollegeProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        "college_name",
+        "college_code",
+        "college_type",
+        "state",
+        "verified",
+        "is_popular",
+        "is_featured",
+    )
+    search_fields = ("college_name", "college_code", "email", "phone")
+    list_filter = ("college_type", "state", "verified", "is_popular", "is_featured")
+    readonly_fields = ("created_at", "updated_at", "logo_preview", "image_preview")
+
+    inlines = [CourseInline, FacultyInline, GalleryInline, HostelInline]
+
+    fieldsets = (
+        ("Basic Info", {
+            "fields": (
+                "user",
+                "college_name",
+                "college_code",
+                "official_registration_no",
+                "college_type",
+                "established_year",
+                "accreditation_body",
+            )
+        }),
+        ("Contact & Location", {
+            "fields": (
+                "country",
+                "state",
+                "district",
+                "pin_code",
+                "address",
+                "email",
+                "phone",
+                "landline",
+                "website",
+                "contact_person",
+            )
+        }),
+        ("Media", {
+            "fields": (
+                "college_logo", "logo_preview",
+                "college_image", "image_preview",
+                "credential_image",
+            )
+        }),
+        ("Status", {
+            "fields": (
+                "verified",
+                "approved_by",
+                "approved_at",
+                "is_popular",
+                "is_featured",
+            )
+        }),
+        ("Timestamps", {
+            "fields": ("created_at", "updated_at"),
+        }),
+    )
+
+    def logo_preview(self, obj):
+        if obj.college_logo:
+            return format_html(f"<img src='{obj.college_logo.url}' width='120' height='120' />")
+        return "No Logo"
+    logo_preview.short_description = "Logo Preview"
+
+    def image_preview(self, obj):
+        if obj.college_image:
+            return format_html(f"<img src='{obj.college_image.url}' width='200' />")
+        return "No Image"
+    image_preview.short_description = "Main Image Preview"
 
 
-# # ---------- Admission Applications ----------
-# @admin.register(AdmissionApplication)
-# class AdmissionApplicationAdmin(admin.ModelAdmin):
-#     list_display = (
-#         'student', 'course', 'college_name', 'status',
-#         'applied_at', 'consultant'
-#     )
-#     list_filter = ('status', 'course__college__state', 'course__college__district')
-#     search_fields = ('student__email', 'course__name', 'course__college__college_name')
-#     readonly_fields = ('applied_at', 'updated_at', 'student', 'course', 'consultant')
+# ============================================
+# 🔵 COURSE ADMIN
+# ============================================
 
-#     fieldsets = (
-#         ('Application Info', {
-#             'fields': ('student', 'course', 'consultant', 'status', 'submitted_documents')
-#         }),
-#         ('Timestamps', {
-#             'fields': ('applied_at', 'updated_at')
-#         }),
-#     )
-
-#     def college_name(self, obj):
-#         return obj.course.college.college_name
-#     college_name.short_description = "College"
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    list_display = (
+        "degree",
+        "specialization",
+        "college",
+        "level",
+        "duration",
+        "fee",
+    )
+    search_fields = ("degree", "specialization", "college__college_name")
+    list_filter = ("level", "main_stream")
+    ordering = ("college", "degree")
 
 
-# # ---------- Course Category ----------
-# @admin.register(CourseCategory)
-# class CourseCategoryAdmin(admin.ModelAdmin):
-#     # CourseCategory doesn't have an `is_active` field; remove it from display
-#     list_display = ('name', 'level', 'slug')
-#     search_fields = ('name',)
-#     list_filter = ('level',)
+# ============================================
+# 🔵 EVENT ADMIN
+# ============================================
+
+@admin.register(Event)
+class EventAdmin(admin.ModelAdmin):
+    list_display = ("name", "college", "date", "location")
+    search_fields = ("name", "college__college_name")
+    list_filter = ("date",)
+
+    readonly_fields = ("image_preview",)
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html(f"<img src='{obj.image.url}' width='200' />")
+        return "No Image"
+    image_preview.short_description = "Event Image Preview"
+
+
+# ============================================
+# 🔵 GALLERY ADMIN
+# ============================================
+
+@admin.register(Gallery)
+class GalleryAdmin(admin.ModelAdmin):
+    list_display = ("college", "media_type", "title", "display_order")
+    list_filter = ("media_type",)
+    search_fields = ("title", "college__college_name")
+
+    readonly_fields = ("media_preview",)
+
+    def media_preview(self, obj):
+        if obj.file:
+            if obj.media_type == "image":
+                return format_html(f"<img src='{obj.file.url}' width='200' />")
+            return format_html(f"<video src='{obj.file.url}' width='220' controls></video>")
+        return "No Media"
+
+
+# ============================================
+# 🔵 FACULTY ADMIN
+# ============================================
+
+@admin.register(Faculty)
+class FacultyAdmin(admin.ModelAdmin):
+    list_display = ("name", "designation", "department", "college", "is_active")
+    list_filter = ("department", "is_active")
+    search_fields = ("name", "designation", "college__college_name")
+
+    readonly_fields = ("photo_preview",)
+
+    def photo_preview(self, obj):
+        if obj.photo:
+            return format_html(f"<img src='{obj.photo.url}' width='150' />")
+        return "No Photo"
+
+
+# ============================================
+# 🔵 HOSTEL ADMIN
+# ============================================
+
+@admin.register(Hostel)
+class HostelAdmin(admin.ModelAdmin):
+    list_display = ("name", "college", "type", "fee", "is_active")
+    list_filter = ("type", "is_active")
+    search_fields = ("name", "college__college_name")
+
+    readonly_fields = ("images_preview",)
+
+    def images_preview(self, obj):
+        if obj.images:
+            previews = "".join(
+                f"<img src='{img}' width='120' style='margin-right:5px;border-radius:6px;' />"
+                for img in obj.images
+            )
+            return format_html(previews)
+        return "No Images"

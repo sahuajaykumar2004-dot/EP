@@ -12,7 +12,9 @@ import datetime
 import logging
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
-
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from django.contrib.admin.views.decorators import staff_member_required
 from User.serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -342,3 +344,33 @@ class CheckProfileStatusView(APIView):
             "user_type": user.user_type,
             "is_profile_complete": user.is_profile_complete
         })    
+    
+
+ # -----------------------------
+# Logout Admin and Redirect to Frontend
+# -----------------------------   
+@staff_member_required
+def admin_logout_redirect(request):
+        """
+        Logout an admin user and redirect to the frontend landing page.
+
+        Notes:
+        - `staff_member_required` wraps this view and will redirect to the admin
+            login page if the caller is not authenticated as a staff user. In API
+            contexts using token/JWT auth the decorator can redirect to the admin
+            login instead of the frontend. To avoid surprising redirects we ensure
+            we only redirect to the frontend for authenticated staff users.
+        - This view clears the session (Django logout). If you use JWTs this
+            does not invalidate tokens; implement token blacklisting if needed.
+        """
+        user = getattr(request, 'user', None)
+        # Double-check staff status (the decorator normally enforces this)
+        if not user or not getattr(user, 'is_authenticated', False) or not getattr(user, 'is_staff', False):
+                # If the requester is not an authenticated staff user, send them to admin login
+                from django.contrib.admin.views.decorators import redirect_to_login
+                return redirect_to_login(request.get_full_path())
+
+        # Clear the session and redirect to frontend landing page
+        logout(request)
+        frontend_url = getattr(settings, "FRONTEND_BASE_URL", "http://127.0.0.1:5502")
+        return redirect(f"{frontend_url.rstrip('/')}/index.html")

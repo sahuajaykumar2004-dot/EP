@@ -144,7 +144,7 @@ class Event(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.college.code})"    
+        return f"{self.name} ({self.college.college_code})"    
 
 class Gallery(models.Model):
     MEDIA_CHOICES = [
@@ -232,5 +232,5 @@ class Hostel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} ({self.college.name})"    
+        return f"{self.name} ({self.college.college_name})"    
 
